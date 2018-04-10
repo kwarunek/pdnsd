@@ -19,7 +19,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: icmp.h,v 1.4 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef ICMP_H
 #define ICMP_H
@@ -34,7 +33,7 @@ volatile extern int ping6_isocket;
 /* initialize a socket for pinging */
 void init_ping_socket(void);
 
-/* 
+/*
  * This is a classical ping routine.
  * timeout in 10ths of seconds, rep is the repetition count.
  */

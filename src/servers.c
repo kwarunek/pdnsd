@@ -1,7 +1,7 @@
 /* servers.c - manage a set of dns servers
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2007, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2007, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -47,9 +47,6 @@
 #include "helpers.h"
 #include "dns_query.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.19 2002/07/19 21:14:19 tmm Exp $";
-#endif
 
 /*
  * We may be a little over-strict with locks here. Never mind...
@@ -71,7 +68,7 @@ static char schm[32];
 static void sigint_handler(int signum);
 
 /*
- * Execute an individual uptest. Call with locks applied 
+ * Execute an individual uptest. Call with locks applied
  */
 static int uptest (servparm_t *serv, int j)
 {
@@ -186,7 +183,7 @@ static int uptest (servparm_t *serv, int j)
 	}
 		break;
 	case C_QUERY:
-		ret=query_uptest(s_addr, serv->port,
+		ret=query_uptest(s_addr, serv->port, serv->query_test_name,
 				 serv->timeout>=global.timeout?serv->timeout:global.timeout,
 				 PINGREPEAT);
 	} /* end of switch */
@@ -210,15 +207,15 @@ static int scheme_ok(servparm_t *serv)
 		  	ssize_t nschm;
 			int sc = open(global.scheme_file, O_RDONLY);
 			char *s;
-			if (sc<0) 
+			if (sc<0)
 				return 0;
 			nschm = read(sc, schm, sizeof(schm)-1);
 			close(sc);
-			if (nschm < 0) 
+			if (nschm < 0)
 				return 0;
 			schm[nschm] = '\0';
 			s = strchr(schm, '\n');
-			if (s) 
+			if (s)
 				*s='\0';
 		}
 		if (fnmatch(serv->scheme, schm, 0))
@@ -289,7 +286,7 @@ static void retest(int i, int j)
 /* This is called by the server status thread to discover the addresses of root servers.
    Call with server_lock applied.
 */
-static addr2_array resolv_rootserver_addrs(atup_array a, int port, time_t timeout)
+static addr2_array resolv_rootserver_addrs(atup_array a, int port, char edns_query, time_t timeout)
 {
 	addr2_array retval=NULL;
 
@@ -297,13 +294,13 @@ static addr2_array resolv_rootserver_addrs(atup_array a, int port, time_t timeou
 	++server_data_users;
 	pthread_mutex_unlock(&servers_lock);
 
-	retval= dns_rootserver_resolv(a,port,timeout);
+	retval= dns_rootserver_resolv(a,port,edns_query,timeout);
 
 	pthread_mutex_lock(&servers_lock);
 	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
 	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
 
-	return retval;	
+	return retval;
 }
 
 /*
@@ -333,7 +330,7 @@ void *servstat_thread(void *p)
 	if(sigaction(statusintsig, &action, NULL) == 0) {
 		sigset_t smask;
 		sigemptyset(&smask);
-		sigaddset(&smask, statusintsig); 
+		sigaddset(&smask, statusintsig);
 		pthread_sigmask(SIG_UNBLOCK,&smask,NULL);
 	}
 	else {
@@ -393,7 +390,7 @@ void *servstat_thread(void *p)
 					}
 
 					DEBUG_MSG("Attempting to discover root servers for server section #%d.\n",i);
-					adrs=resolv_rootserver_addrs(sp->atup_a,sp->port,sp->timeout);
+					adrs=resolv_rootserver_addrs(sp->atup_a,sp->port,sp->edns_query,sp->timeout);
 					l= DA_NEL(adrs);
 					if(l>0) {
 						struct timeval now;
@@ -456,7 +453,7 @@ void *servstat_thread(void *p)
 					    (needs_intermittent_testing(sp) &&
 					     ((now=time(NULL))-ts>sp->interval ||
 					      ts>now /* kluge for clock skew */)))
-					{ 
+					{
 						retest(i,j);
 					}
 				}
@@ -539,11 +536,11 @@ int start_servstat_thread()
  * or to schedule an immediate retest (up=-1).
  * We can't always use indices to identify a server, because we allow run-time
  * configuration of server addresses, so the servers are identified by their IP addresses.
- */ 
+ */
 void sched_server_test(pdnsd_a *sa, int nadr, int up)
 {
 	int k,signal_test;
-	
+
 	pthread_mutex_lock(&servers_lock);
 
 	signal_test=0;
@@ -562,7 +559,7 @@ void sched_server_test(pdnsd_a *sa, int nadr, int up)
 						at->is_up=up;
 						at->i_ts=time(NULL);
 						DEBUG_PDNSDA_MSG("Marked server %s %s.\n",PDNSDA2STR(sak),up?"up":"down");
-					} 
+					}
 					else if(at->i_ts) {
 						/* A test may take a while, and we don't want to hold
 						   up the calling thread.
@@ -650,7 +647,7 @@ int mark_servers(int i, char *label, int up)
 void test_onquery()
 {
 	int i,n,signal_test;
-	
+
 	pthread_mutex_lock(&servers_lock);
 	schm[0] = '\0';
 	signal_test=0;

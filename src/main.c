@@ -1,7 +1,7 @@
 /* main.c - Command line parsing, intialisation and server start
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2010 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -47,9 +47,6 @@
 #include "icmp.h"
 #include "hash.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.42 2001/05/30 21:04:15 tmm Exp $";
-#endif
 
 #if DEBUG>0
 short int debug_p=0;
@@ -75,10 +72,10 @@ char *conf_file=CONFDIR"/pdnsd.conf";
 
 /* version and licensing information */
 static const char info_message[] =
-	
+
 	"pdnsd - dns proxy daemon, version " VERSION "\n\n"
 	"Copyright (C) 2000, 2001 Thomas Moestl\n"
-	"Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts\n\n"
+	"Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2010 Paul A. Rombouts\n\n"
 	"pdnsd is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"
 	"the Free Software Foundation; either version 3 of the License, or\n"
@@ -125,7 +122,7 @@ static const char help_message[] =
 	"-p\t\tWrites the pid the server runs as to a specified filename.\n"
 	"\t\tWorks only in daemon mode.\n"
 	"-vn\t\tsets the verbosity of pdnsd. n is a numeric argument from 0\n"
-	"\t\t(normal operation) to 3 (many messages for debugging).\n"
+	"\t\t(normal operation) to 9 (many messages for debugging).\n"
 	"\t\tUse like -v2\n"
 	"-mxx\t\tsets the query method pdnsd uses. Possible values for xx are:\n"
 	"\t\tuo (UDP only), to (TCP only), tu (TCP or, if the server\n"
@@ -242,7 +239,7 @@ int main(int argc,char *argv[])
 		}
 	}
 #endif
-	
+
 	/* Parse the command line.
 	   Remember which options were specified here, because the command-line options
 	   shall override the ones given in the config file */
@@ -288,7 +285,7 @@ int main(int argc,char *argv[])
 					"Try using -4 or -6 option instead.\n",strerror(errno));
 				exit(1);
 			}
-			if((run_ipv4=!rv))
+			if((run_ipv4= !rv))
 				fprintf(stderr,"Switching to IPv4 mode.\n");
 			cmdlineipv=1;
 #else
@@ -450,7 +447,7 @@ int main(int argc,char *argv[])
 			if (sp->uptest==C_EXEC && sp->uptest_usr[0]=='\0') {
 				uid_t uid=getuid();
 				struct passwd *pws=getpwuid(uid);
-		
+
 				/* No explicit uptest user given. If we run_as and strict_suid, we assume that
 				 * this is safe. If not - warn. */
 				fprintf(stderr,"Warning: uptest command \"%s\" will implicitly be executed as user ", sp->uptest_cmd);
@@ -472,10 +469,10 @@ int main(int argc,char *argv[])
 #ifdef O_NOFOLLOW
 			      |O_NOFOLLOW
 #else
-		/* 
-		 * No O_NOFOLLOW. Nevertheless, this not a hole, since the 
-		 * directory for pidfiles should not be world writeable. 
-		 * OS's that do not support O_NOFOLLOW are currently not 
+		/*
+		 * No O_NOFOLLOW. Nevertheless, this not a hole, since the
+		 * directory for pidfiles should not be world writeable.
+		 * OS's that do not support O_NOFOLLOW are currently not
 		 * supported, this is just-in-case code.
 		 */
 #endif
@@ -539,7 +536,7 @@ int main(int argc,char *argv[])
 		if (pid!=0) {
 			int exitval=0;
 			if (global.pidfile) {
-				if(fsprintf(pfd,"%i\n",pid)<0) {
+				if(fsprintf(pfd,"%i\n",(int)pid)<0) {
 					log_error("Error: could not write to pid file %s: %s",
 						  global.pidfile, strerror(errno));
 					exitval=1;
@@ -593,16 +590,7 @@ int main(int argc,char *argv[])
 	if (!final_init())
 		_exit(1);
 #endif
-#ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		DEBUG_MSG("Using IPv4.\n");
-	}
-#endif
-#ifdef ENABLE_IPV6
-	ELSE_IPV6 {
-		DEBUG_MSG("Using IPv6.\n");
-	}
-#endif
+	DEBUG_MSG(SEL_IPVER("Using IPv4.\n", "Using IPv6.\n"));
 
 	/* initialize attribute for creating detached threads */
 	pthread_attr_init(&attr_detached);

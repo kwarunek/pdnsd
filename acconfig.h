@@ -1,25 +1,23 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.13 2001/05/22 18:04:59 tmm Exp $ */
-
 /* ONLY EDIT acconfig.h, NEVER config.h or config.h.in!
  * config.h MAY BE OVERWRITTEN BY make, config.h.in by autoheader! */
 
-/* Define your Target here. Currently defined are TARGET_LINUX (any 
- * architecture), TARGET_BSD (experimental; tested on FreeBSD, hopefully 
+/* Define your Target here. Currently defined are TARGET_LINUX (any
+ * architecture), TARGET_BSD (experimental; tested on FreeBSD, hopefully
  * works for other BSD variants) and TARGET_CYGWIN. */
 #define TARGET TARGET_LINUX
 
-/* change the #undef to #define if you do not want to compile with special 
- * ISDN support for Linux. Note that the ISDN support will not compile ok on 
+/* change the #undef to #define if you do not want to compile with special
+ * ISDN support for Linux. Note that the ISDN support will not compile ok on
  * unpatched kernerls earlier than 2.2.12 (if you did apply newer isdn patches,
- * it may work fine). This is not on by default because it will cause compile 
+ * it may work fine). This is not on by default because it will cause compile
  * problems on some systems */
 #undef ISDN_SUPPORT
 
 /* The following regulates the IP Protocol support. Supported types are IPv4
- * and IPv6 (aka IPng). You may enable either or both of these protocols. 
+ * and IPv6 (aka IPng). You may enable either or both of these protocols.
  * Enabling in this context means that support for the respective protocol
  * will be in the binary. When running the binary, one of the protocols may
  * be activated via command line switches. Note that activating both IPv4 and
@@ -29,28 +27,27 @@
  * from IPv6 as well as from IPv4 hosts, provided that you host is configured
  * properly.
  * For each of the protocols there are two options: ENABLE_IPV4 and ENABLE_IPV6
- * control whether support for the respective protocol is available in the 
+ * control whether support for the respective protocol is available in the
  * binary. DEFAULT_IPV4 selects which protocol is enabled on pdnsd
  * startup by default. 1 means IPv4, while 0 means IPv6. If support for
  * a protocol was included in the executable, you can specify command line
- * parameters to activate or deactivate that protocol (the options are -4 and 
+ * parameters to activate or deactivate that protocol (the options are -4 and
  * -6), but it makes more sense to use the run_ipv4=on/off option in the
  * configuration file.
- * Make your choice. Note that IPv6 support is experimental in pdnsd. 
- * In normal operation, you will currently only need IPv4. 
- * If you activate IPv6, you should also activate DNS_NEW_RRS below. */
+ * Make your choice. Note that IPv6 support is experimental in pdnsd.
+ * In normal operation, you will currently only need IPv4. */
 #undef ENABLE_IPV4
 #define DEFAULT_IPV4 1
 #undef ENABLE_IPV6
 
 /* In all pdnsd versions before 1.0.6, DNS queries were always done over
- * TCP. Now, you have the choice. You can control that behaviour using 
+ * TCP. Now, you have the choice. You can control that behaviour using
  * the -m command line switch, and you can give a preset here. There
  * are 3 different modes:
  * UDP_ONLY: This is undoubtedly the fastest query method, because
  *       no TCP negotiation needs to be done.
  * TCP_ONLY: This is slower than uo, but generally more secure
- *       against DNS spoofing. Note that some name servers on the 
+ *       against DNS spoofing. Note that some name servers on the
  *       internet do not support TCP queries, notably dnscache.
  * TCP_UDP: TCP, then UDP. If the TCP query fails with a "connection refused"-
  *       error or times out, the query is retried using UDP.
@@ -79,19 +76,6 @@
  * unsure about what this means, just leave this as it is.*/
 #undef NO_POLL
 
-/* Define this if you want to compile with support for the new
- * rrs defined in various rfcs (see rfc1700 for an (incomplete) 
- * listing and pointers). These are normally not needed and consume 
- * some memory even if no records are present. You should delete the cache
- * files before you use a version with this option changed.
- * If you consider using IPv6, you will probably need the AAAA
- * (IPv6 address) record type and should enable this option. 
- * See dns.h for the definitions.
- * In short, these RRs are:
- * RP, AFSDB, X25, ISDN, RT, NSAP, PX, GPOS, AAAA, LOC,
- * EID, NIMLOC, SRV, ATMA, NAPTR and KX*/
-#undef DNS_NEW_RRS
-
 /* Define this for "hard" RFC 2181 compliance: this RFC states that
  * implementations should discard answers whose RR sets have multiple
  * different time stamps. While correct answers are generated, incorrect
@@ -105,7 +89,7 @@
  * function, which basically should be sufficient.
  * Linux and FreeBSD have two random number devices: /dev/random and
  * /dev/urandom. /dev/urandom might be less secure in some cases, but
- * should still be more than sufficient. The use of /dev/random is 
+ * should still be more than sufficient. The use of /dev/random is
  * discouraged, as reading from this device blocks when new random bits
  * need to be gathered. */
 #undef RANDOM_DEVICE
@@ -125,18 +109,18 @@
 /* This is for various debugging facilities that produce debug output and
  * double-check some values. You can enable debug messages with the -g option.
  * Normally, you can switch this off safely by setting the number after DEBUG
- * to 0. This will increase speed (although only marginally), save space 
+ * to 0. This will increase speed (although only marginally), save space
  * in the executable (only about 12kB) and some stack space per thread
  * (which may be significant if you have many threads running simultaneously).
- * However, it may be an aid when debugging config files. 
+ * However, it may be an aid when debugging config files.
  * The only defined debug levels by now are in the range 0 - 9.
  * Define this to 9 if you want hex dumps of all the queries and replies pdnsd
  * receives (you must also call pdnsd with -v9 to actually see the hex dumps).
  * When in doubt, leave it defined to 1. */
 #define DEBUG 1
 
-/* This defines the default verbosity of informational messages you will get. 
-   This has nothing to to with the debug option (-g), but may be set with -v 
+/* This defines the default verbosity of informational messages you will get.
+   This has nothing to to with the debug option (-g), but may be set with -v
    option. 0 is for normal operation, up to 3 for debugging.
    Unlike the debug messages, these messages will also be written to the syslog.*/
 #define VERBOSITY 0
@@ -151,16 +135,6 @@
 /* Set this to debug the hash tables. Turn this off normally, or you will get
  * flooded with diagnostic messages */
 #undef DEBUG_HASH
-
-/* Define this if you need to debug the config file parser. Will generate lots
- * of diagnostic messages.  */
-#undef DEBUG_YY
-
-/* Defining NO_RCSIDS will exclude the CVS/RCS Id tags from the executables.
- * This is normally a good idea when you build pdnsd only for yourself (saves
- * executable space) but should be left enable when you build binaries for
- * distributions as it makes error-tracking easier. */
-#undef NO_RCSIDS
 
 /* Define if you have working C99 Variadic macro support */
 #undef CPP_C99_VARIADIC_MACROS
@@ -180,14 +154,11 @@
 /* Default value for parallel query number */
 #define PAR_QUERIES   2
 
-/* These are the possible targets. Normally no need to touch these 
+/* These are the possible targets. Normally no need to touch these
  * definitions. */
 #define TARGET_LINUX  0
 #define TARGET_BSD    1
 #define TARGET_CYGWIN 2
-
-/* Allow _ in domain names? (This option is obsolete and will be ignored.) */
-#undef UNDERSCORE
 
 /* Assume the Native POSIX Thread Library instead of LinuxThreads ? */
 #undef THREADLIB_NPTL
@@ -208,9 +179,10 @@
    Leave the definitions unchanged to avoid distracting warning messages. */
 #define charp (char *)
 #define ucharp (unsigned char *)
-   
+
 
 /* pdnsd version. DO NOT TOUCH THIS! It is replaced automatically by the
  * contents of ./version */
-#define VERSION @VERSION@
+#define VERSION "@VERSION@"
+
 #endif

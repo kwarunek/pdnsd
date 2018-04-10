@@ -1,3 +1,233 @@
+2012-03-16  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	When adding RR records one by one to a cache entry using add_cent_rr(),
+	use the smallest ttl value in case of conflicting ttls.
+	Code for local/nonlocal conflict resolution has been taken out of
+	add_cent_rr_int() and put into add_cent_rr() and cr_check_add()
+	which should be slightly more efficient.
+
+2012-03-15  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Enforcing strict RFC 2181 compliance by rejecting all the answers
+	with inconsistent ttl timestamps can cause undesirable resolve failures.
+	I have tried to implement a more compromising solution, whereby
+	inconsistent answers that should be normally rejected are still never
+	cached, but are nevertheless used as intermediary or temporary results
+	if all else fails.
+
+2012-03-13  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Fixed a typo in rr_to_cache() that caused pdnsd to fail to compile when
+	configured with the --enable-strict-rfc2181 option.
+	Thanks to Gonzalo L. R. for reporting this problem.
+	Also changed the return value of rr_to_cache() from a simple boolean to
+	an RC code in order to properly distinguish between memory allocation
+	errors and time-stamp inconsistencies.
+
+2012-02-21  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	If we have used EDNS in a query and the remote server answered
+	with rcode "format error", try again with the OPT pseudo-record
+	removed from the additional section of the query.
+
+	Also fixed a bug in p_exec_query() that caused pdnsd to behave
+	as if every reply with a non-empty additional section contained
+	an OPT record.
+
+2012-02-15  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/helpers.c,src/helpers.h,src/icmp.c,
+	  src/ipvers.h,src/main.c,src/netdev.c
+	Introduced a new macro SEL_IPVER() to reduce some of the clutter in the
+	code caused by having to support both IPv4 and IPv6.
+
+2012-01-31  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* configure.in
+	Add AM_PROG_CC_C_O line to configure.in to prevent automake warning.
+
+2012-01-29  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	In report_cache_stat(), add the average number of bytes used per cache
+	entry when reporting the cache status, as suggested by M. Galabant.
+
+2012-01-28  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c
+	Cleaned up the code a bit to avoid warning messages when
+	compiling with '-Wall -Winline' flags.
+
+2012-01-18  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c
+	Set the default of the edns_query option to false.
+
+2011-07-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Use a slightly more sophisticated merge-sort algorithm in sort_rrl().
+
+2011-05-09  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	In compose_answer(), also add an OPT pseudo-RR to the additional section
+	of a NXDOMAIN reply when appropriate.
+
+2011-05-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/cache.h,src/dns_query.c,src/status.c
+	Make the dns_cent_t struct more compact by putting the fields that are
+	only used for either non-existent or existent domains, but not both,
+	into a union so that these fields can share memory.
+	When saving the cache to file, only write the TTL and time-stamp for
+	a whole domain when it is negatively cached.
+
+2011-05-06  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/cache.h,src/dns_query.c
+	At the request of Andrei Caraman, the TTL of a negatively cached domain
+	is now adjusted in accordance with the min_ttl and max_ttl options, just
+	as it is done for (negatively) cached records.
+	Additional change to the TTL policy is that for negative records (and
+	negative domains) the neg_ttl setting overrides min_ttl if
+	neg_ttl < min_ttl.
+
+2011-04-26  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	Fixed memory leak that can occur when the configuration file is reloaded
+	and an error is encountered while parsing the definition of a TXT
+	record.
+
+2011-03-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/make_rr_types_h.pl,src/cache.h,src/cache.c,src/dns_answer.c
+	Introduced arrays rrmuiterlist and rrcachiterlist to make iterating
+	over all possible RR types in a cache entry in strict ascending order
+	a little more efficient.
+
+2011-03-09  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c,src/conf-parser.c,src/conf-keywords.h
+	Implemented a new config option "outgoing_ip", which
+	makes it possible to bind outgoing connections to
+	a specific interface.
+
+2011-02-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/netdev.c
+	Fixed UDP socket descriptors leak in the implementation of
+	is_local_addr() for the FreeBSD platform. Thanks to Ashish Shukla for
+	reporting this bug.
+
+2011-02-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	In purge_all_rrsets(), also free the rrext array if it has become empty after
+	purging all the RR sets.
+
+2011-02-04  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/conf-parser.c,src/conf-keywords.h,
+	  src/dns_query.c,src/dns_query.h,src/servers.c
+	Changed "edns_query" from a "global" option to a "server"
+	configuration option.
+
+2011-02-04  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/dns_query.c,src/dns_query.h,src/servers.c,
+	  src/conf-parser.c
+	The query uptest sometimes fails because some DNS servers are configured
+	to ignore empty queries. The new config option "query_test_name" makes
+	it possible to query for a specific name instead.
+
+2011-02-01  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	When processing a reply from a remote name server which seems to delegate
+	to other name servers, check if the names for which NS records have
+	been supplied have locally defined NS records. If so, the local
+	records will now override those supplied by the remote server.
+
+2011-01-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	Added support for defining TXT records in the configuration file.
+
+2011-01-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Do not cache additional records from a response that is rejected because
+	it contains IP addresses in the reject list, even when the reply
+	is processed as a NXDOMAIN reply.
+
+2011-01-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	Modified the function scan_string() to allow back-slashed escape
+	sequences in strings.
+
+2011-01-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c,src/conff.h,src/conff.c,
+	  src/conf-parser.c
+	Added support for EDNS (Extension mechanisms for DNS).
+	Currently this is only useful for allowing UDP message sizes
+	to be larger than 512 bytes.
+
+2011-01-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	To avoid frequent reallocs when composing a DNS reply message,
+	grow the message buffer in multiples of a certain minimum chunk size.
+
+2011-01-19  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns.c,src/dns.h,src/dns_answer.c
+	Extended debugging info with DNS-message lengths and flags of incoming
+	messages.
+
+2011-01-17  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/conf-parser.c,src/dns_answer.c
+	Made "ignore_cd" option obsolete. It is now effectively always on.
+
+2010-12-27  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/cache.h,src/dns_answer.c,src/dns_query.c,
+	  src/make_rr_types.pl,src/rr_types.in,src/rr_types.c
+	The array of pointers to rr_set_t structs in the dns_cent_t struct
+	contains mostly null pointers in practice, so is somewhat
+	inefficient in storage usage. This problem is exacerbated if we add
+	support for caching more RR-types. To ameliorate to the problem
+	I have decided to split the array in two, with one part fixed in the
+	dns_cent_t struct as before, and an extension part that will be
+	separately allocated, if necessary. If the extension part is used only
+	for very rarely cached types, in most cases the extension array will not
+	need to be allocated thus hopefully saving memory overall.
+	The lookup tables which are necessary to support the new cache entry
+	structure are cumbersome to write by hand, so I have written a perl
+	script to do this automatically. As an additional benefit, which RR
+	types are cache-able is now configurable for each type separately via
+	rr_types.in.
+
+2010-03-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Using randomized source ports for outgoing queries in IPv6 mode failed
+	with the warning "Out of ports in the range 1024-65535, dropping query!",
+	because the pdnsd tried to bind to the fixed port for incoming queries,
+	instead of the dynamically chosen port. This is a very old bug, but it
+	has only become apparent since source port randomization has become the
+	default.
+	Thanks to Philip-André Fillion, Phil Sutter, Radoslaw Szkodzinski and
+	others for reporting this bug and sending patches.
+
 2009-12-25  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/status.c,src/status.h,src/pdnsd-ctl/pdnsd-ctl.c
@@ -80,7 +310,6 @@
 	in CERT VU#800113.
 	The old situation, where pdnsd lets the kernel select the source ports,
 	is still available by specifying query_port_start=none.
-	
 
 2008-07-25  Paul Rombouts  <p.a.rombouts@home.nl>
 
@@ -712,7 +941,7 @@
 	* src/dns_query.c
 	The code for handling NXT records was flawed. A response from a remote server
 	containing NXT records (even well-formed ones) could cause pdnsd to crash.
-	The code for handling NAPTR records contained incorrect PDNSD_ASSERT statements, 
+	The code for handling NAPTR records contained incorrect PDNSD_ASSERT statements,
 	which could cause pdnsd to abort unnecessarily.
 
 2004-07-25  Paul A. Rombouts  <p.a.rombouts@home.nl>
@@ -775,7 +1004,6 @@
 	sections of replies from remote name servers.
 	This information can be used by pdnsd to fill in the authority section of its
 	own reply.
-	
 
 2004-06-25  Paul Rombouts  <p.a.rombouts@home.nl>
 
@@ -931,7 +1159,7 @@
 	versions of pdnsd the busy spin would eventually time out. Due to some recent
 	changes the loop would no longer time out, making the bug more noticeable.
 	With thanks to Nicolas George for reporting the bug.
-	
+
 	I also discovered a closely related flaw that would cause pdnsd to poll() closed
 	file descriptors. It usually works out OK in practice, but it is definitively not
 	the correct way to do it.
@@ -1126,7 +1354,7 @@
 	* src/dns.c,src/test/is_local_addr.c,src/test/tping.c
 	It appears the option to compile pdnsd without IPv4 support (i.e. only IPv6
 	support) was broken. Should be fixed now.
-	
+
 2004-03-19  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/cache.c
@@ -1156,7 +1384,7 @@
 2004-03-13  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c
-	Changed a declaration in udp_answer_thread() so that the buffer used for passing 
+	Changed a declaration in udp_answer_thread() so that the buffer used for passing
 	control messages on to sendmsg() is exactly the right size, instead of an arbitrary
 	512 bytes.
 	Also initialized the msg_flags of the struct msghdr passed on to sendmsg() to zero,
@@ -1347,7 +1575,7 @@
 
 	* src/cache.c
 	Added parentheses to correct mistaken operator precedence assumption in cache.c.
-	!cent->flags&DF_NEGATIVE is parsed as (!(cent->flags))&DF_NEGATIVE but I think 
+	!cent->flags&DF_NEGATIVE is parsed as (!(cent->flags))&DF_NEGATIVE but I think
 	what Thomas Moestl must have intended was !((cent->flags)&DF_NEGATIVE).
 
 2003-09-12  Paul Rombouts <p.a.rombouts@home.nl>
@@ -1465,7 +1693,6 @@
 	Eliminated the use of inet_ntoa() in favor of the more modern inet_ntop().
 	inet_ntop() makes more sense in threaded code and is also recommended in
 	the glibc info pages.
-	
 
 2003-07-03  Paul Rombouts <p.a.rombouts@home.nl>
 

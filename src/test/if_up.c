@@ -6,10 +6,6 @@
 #include "../conff.h"
 #include "../netdev.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: if_up.c,v 1.1 2000/07/20 20:03:25 thomas Exp $";
-#endif
-
 short int daemon_p=0;
 #if DEBUG>0
 short int debug_p=0;
@@ -29,7 +25,7 @@ FILE *dbg_file;
 globparm_t global;
 
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
 	if (argc!=2) {
 		printf("Usage: %s <interface>\n",argv[0]);

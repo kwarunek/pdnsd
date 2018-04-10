@@ -31,13 +31,10 @@
 #include "helpers.h"
 #include "consts.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.12 2001/06/02 23:08:13 tmm Exp $";
-#endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
  * buckets, and hashes strings with case-insensitivity.
- * It is position-aware in a limited way. 
+ * It is position-aware in a limited way.
  * It is exactly seen a two-way hash: because I do not want to exaggerate
  * the hash buckets (i do have 1024), but I hash strings and string-comparisons
  * are expensive, I save another 32 bit hash in each hash element that is checked
@@ -79,7 +76,7 @@ static unsigned dns_hash(const unsigned char *str, unsigned long *rhash)
 	s &= HASH_BITMASK;
 #ifdef DEBUG_HASH
 	{
-		unsigned char buf[256];
+		unsigned char buf[DNSNAMEBUFSIZE];
 		printf("Diagnostic: hashes for %s: %03x,%04lx\n",rhn2str(str,buf,sizeof(buf)),s,r);
 	}
 #endif
@@ -137,7 +134,7 @@ dns_cent_t *dns_lookup(const unsigned char *key, dns_hash_loc_t *loc)
 
   add_dns_hash returns 1 on success, or 0 if out of memory.
 */
-int add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc) 
+int add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc)
 {
 	dns_hash_ent_t *he = malloc(sizeof(dns_hash_ent_t));
 
@@ -225,7 +222,7 @@ void free_dns_hash_selected(int i, slist_array sla)
 		unsigned char *name=he->data->qname;
 		for(j=0;j<m;++j) {
 			slist_t *sl=&DA_INDEX(sla,j);
-			int nrem,lrem;
+			unsigned int nrem,lrem;
 			domain_match(name,sl->domain,&nrem,&lrem);
 			if(!lrem && (!sl->exact || !nrem)) {
 				if(sl->rule==C_INCLUDED)

@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: ipvers.h,v 1.6 2001/04/06 18:11:35 tmm Exp $ */
 
 #ifndef IPVERS_H
 #define IPVERS_H
@@ -30,17 +29,18 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "rr_types.h"
 
 #if defined(ENABLE_IPV4) && !defined(ENABLE_IPV6)
 # ifdef DEFAULT_IPV4
-#  undef DEFAULT_IPV4 
+#  undef DEFAULT_IPV4
 # endif
 # define DEFAULT_IPV4 1
 #endif
 
 #if !defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 # ifdef DEFAULT_IPV4
-#  undef DEFAULT_IPV4 
+#  undef DEFAULT_IPV4
 # endif
 # define DEFAULT_IPV4 0
 #endif
@@ -56,11 +56,14 @@
 # ifdef ENABLE_IPV6
 extern short int run_ipv4;
 extern short int cmdlineipv;
+#  define SEL_IPVER(a4,a6)  (run_ipv4? a4: a6)
 # else
 #  define run_ipv4 1
+#  define SEL_IPVER(a4,a6)  (a4)
 # endif
 #else
 #  define run_ipv4 0
+#  define SEL_IPVER(a4,a6)  (a6)
 #endif
 #ifdef ENABLE_IPV6
 #define DEFAULT_IPV4_6_PREFIX "::ffff:0.0.0.0"
@@ -129,7 +132,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 #if defined(ENABLE_IPV4) && !defined(SIN_LEN) && (TARGET==TARGET_BSD)
 # define SIN_LEN
-#endif 
+#endif
 
 #if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
 
@@ -150,7 +153,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
  * at the time of writing. Should this change, define a appropriate flowinfo here. */
 #define IPV6_FLOWINFO 0
 
-/* There does not seem to be a function/macro to generate IPv6-mapped IPv4-Adresses. So here comes mine. 
+/* There does not seem to be a function/macro to generate IPv6-mapped IPv4-Adresses. So here comes mine.
  * Pass an in_addr* and an in6_addr* */
 #define IPV6_MAPIPV4(a,b) {((uint32_t *)(b))[3]=(a)->s_addr;		\
 			   ((uint32_t *)(b))[2]=htonl(0xffff);		\
@@ -161,38 +164,18 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 #define SOCKA_A4(a) ((pdnsd_a *)&((struct sockaddr_in *)(a))->sin_addr)
 #define SOCKA_A6(a) ((pdnsd_a *)&((struct sockaddr_in6 *)(a))->sin6_addr)
 
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-#  define SOCKA_A(a) (run_ipv4?SOCKA_A4(a):SOCKA_A6(a))
-#  define PDNSD_PF_INET (run_ipv4?PF_INET:PF_INET6)
-#  define PDNSD_AF_INET (run_ipv4?AF_INET:AF_INET6)
-# else
-#  define SOCKA_A(a) SOCKA_A4(a)
-#  define PDNSD_PF_INET PF_INET
-#  define PDNSD_AF_INET AF_INET
-# endif
-#else
-# define SOCKA_A(a) SOCKA_A6(a)
-# define PDNSD_PF_INET PF_INET6
-# define PDNSD_AF_INET AF_INET6
-#endif
+#define SOCKA_A(a) SEL_IPVER(SOCKA_A4(a),SOCKA_A6(a))
+#define PDNSD_PF_INET SEL_IPVER(PF_INET,PF_INET6)
+#define PDNSD_AF_INET SEL_IPVER(AF_INET,AF_INET6)
 
 /* This is to compare two addresses. This is a macro because it may change due to the more complex IPv6 adressing architecture
- * (there are, for example, two equivalent addresses of the loopback device) 
+ * (there are, for example, two equivalent addresses of the loopback device)
  * Pass this two addresses as in_addr or in6_addr. pdnsd_a is ok (it is a union) */
 
 #define ADDR_EQUIV4(a,b) (((struct in_addr *)(a))->s_addr==((struct in_addr *)(b))->s_addr)
 #define ADDR_EQUIV6(a,b) IN6_ARE_ADDR_EQUAL(((struct in6_addr *)(a)),((struct in6_addr *)(b)))
 
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-#  define ADDR_EQUIV(a,b) (run_ipv4? ADDR_EQUIV4(a,b): ADDR_EQUIV6(a,b))
-# else
-#  define ADDR_EQUIV(a,b) ADDR_EQUIV4(a,b)
-# endif
-#else
-# define ADDR_EQUIV(a,b) ADDR_EQUIV6(a,b)
-#endif
+#define ADDR_EQUIV(a,b) SEL_IPVER(ADDR_EQUIV4(a,b), ADDR_EQUIV6(a,b))
 
 /* Compare an IPv6 adress with an IPv4 one. b should have type struct in_addr*.
    Note the similarity with the IPV6_MAPIPV4 macro. */
@@ -210,7 +193,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 				((((uint32_t *)(a))[2]^((uint32_t *)(b))[2])&((uint32_t *)(m))[2])==0 && \
 				((((uint32_t *)(a))[3]^((uint32_t *)(b))[3])&((uint32_t *)(m))[3])==0)
 
-/* See if we need 4.4BSD style sockaddr_* structures and define some macros that set the length field. 
+/* See if we need 4.4BSD style sockaddr_* structures and define some macros that set the length field.
  * The non-4.4BSD behaviour is the only one that is POSIX-conformant.*/
 #if defined(SIN6_LEN) || defined(SIN_LEN)
 # define BSD44_SOCKA
@@ -239,7 +222,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # ifndef IPV6_RECVPKTINFO
 /* This appears to be needed e.g. on Darwin (Mac OS X). */
 #  define IPV6_RECVPKTINFO IPV6_PKTINFO
-# endif 
+# endif
 #endif
 
 typedef union {
@@ -250,6 +233,13 @@ typedef union {
 	struct in6_addr  ipv6;
 #endif
 } pdnsd_a;
+
+#ifdef ENABLE_IPV4
+#define  PDNSD_A_INITIALIZER {{INADDR_ANY}}
+#else
+#define  PDNSD_A_INITIALIZER {IN6ADDR_ANY_INIT}
+#endif
+
 
 /* The pdnsd_a2 type is very similar to pdnsd_a, but can hold
    both an IPv4 and an IPv6 address at the same time,
@@ -283,20 +273,12 @@ inline static void SET_PDNSD_A2(pdnsd_a2 *a2, pdnsd_a *a)
 # define SET_PDNSD_A2(a2,a) ((a2)->ipv4=(a)->ipv4)
 #endif
 
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-#  define PDNSD_A2_TO_A(a2) (run_ipv4?((pdnsd_a *)&(a2)->ipv4):((pdnsd_a *)&(a2)->ipv6))
-# else
-#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv4)
-# endif
-#else
-#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv6)
-#endif
+#define PDNSD_A2_TO_A(a2) SEL_IPVER(((pdnsd_a *)&(a2)->ipv4),((pdnsd_a *)&(a2)->ipv6))
 
 /* Do we have sufficient support in the C libraries to allow local AAAA records
    to be defined? */
-#if defined(DNS_NEW_RRS) && defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
-# define ALLOW_LOCAL_AAAA 1
+#if defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
+# define ALLOW_LOCAL_AAAA IS_CACHED_AAAA
 #else
 # define ALLOW_LOCAL_AAAA 0
 #endif

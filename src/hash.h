@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: hash.h,v 1.3 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef _HASH_H_
 #define _HASH_H_
@@ -36,9 +35,9 @@ typedef struct dns_hash_ent_s {
 /* Redefine this if you want another hash size. Should work ;-).
  * The number of hash buckets is computed as power of two;
  * so, e.g. HASH_SZ set to 10 yields 1024 hash rows (2^10 or 1<<10).
- * Only powers of two are possible conveniently. 
+ * Only powers of two are possible conveniently.
  * HASH_SZ may not be bigger than 32 (if you set it even close to that value,
- * you are nuts.) */ 
+ * you are nuts.) */
 /* #define HASH_SZ       10 */  /* Now defined in config.h */
 #define HASH_NUM_BUCKETS (1<<HASH_SZ)
 

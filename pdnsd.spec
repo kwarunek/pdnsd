@@ -5,7 +5,7 @@
 #
 # --with isdn                   Configure with --enable-isdn.
 #
-# --without poll                Configure with --disable-poll 
+# --without poll                Configure with --disable-poll
 #
 # --without nptl                Configure with --with-thread-lib=linuxthreads.
 #
@@ -51,15 +51,15 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.2.8
+Version: 1.2.9a
 Release: par
 License: GPLv3
 Group:  Daemons
-Source: http://www.phys.uu.nl/~rombouts/pdnsd/releases/%{name}-%{version}-%{release}.tar.gz
-URL: http://www.phys.uu.nl/~rombouts/pdnsd.html
+Source: http://members.home.nl/p.a.rombouts/pdnsd/releases/%{name}-%{version}-%{release}.tar.gz
+URL: http://members.home.nl/p.a.rombouts/pdnsd.html
 Vendor: Paul A. Rombouts
 Packager:  Paul A. Rombouts <p.a.rombouts@home.nl>
-Prefix: %{_prefix} 
+Prefix: %{_prefix}
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 
 %description
@@ -69,7 +69,7 @@ and to prevent DNS-dependent applications like Netscape Navigator from hanging.
 
 The original author of pdnsd is Thomas Moestl, but pdnsd is no longer maintained
 by him. This is an extensively revised version by Paul A. Rombouts.
-For a description of the changes see http://www.phys.uu.nl/~rombouts/pdnsd.html
+For a description of the changes see http://members.home.nl/p.a.rombouts/pdnsd.html
 and the file README.par in %{_docdir}/%{name}-%{version}
 
 %{!?distro:You can specify the target distribution when you build the source RPM. For instance, if you're building for a Red Hat system call rpmbuild with:}
@@ -118,7 +118,8 @@ id -u %{run_as_user} > /dev/null 2>&1 ||
 rm -rf "$RPM_BUILD_ROOT"
 make DESTDIR="$RPM_BUILD_ROOT" install
 cp -f file-list.base file-list
-find doc contrib -not -type d -not -iname makefile -not -name '*.am' -not -name '*.in' |
+find doc contrib -not -type d -not -iname '*makefile' -not -name '*.am' \
+                 -not -name '*.in' -not -path 'doc/*.pl' |
 sed -e 's/^/%doc --parents /'  >> file-list
 CURDIR=$PWD; cd "$RPM_BUILD_ROOT"
 find . -not -type d '(' -not -name 'pdnsd.conf*' -or -name 'pdnsd.conf.[1-9]*' ')' \
@@ -216,6 +217,11 @@ fi
 %endif
 
 %changelog
+* Tue Jan 31 2012 Paul A. Rombouts <p.a.rombouts@home.nl>
+- Prevent makefiles and perl scripts from being installed
+  in the documentation directory.
+* Sat Jan 28 2012 Paul A. Rombouts <p.a.rombouts@home.nl>
+- Update the (Source) URLs.
 * Sat Aug  4 2007 Paul Rombouts <p.a.rombouts@home.nl>
 - License is now GPL version 3
 * Fri Mar 24 2006 Paul Rombouts <p.a.rombouts@home.nl>
