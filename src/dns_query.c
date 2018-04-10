@@ -1,7 +1,7 @@
 /* dns_query.c - Execute outgoing dns queries and write entries to cache
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -22,7 +22,9 @@ Boston, MA 02111-1307, USA.  */
 
 #include <config.h>
 #include <sys/types.h>
+#ifdef HAVE_SYS_POLL_H
 #include <sys/poll.h>
+#endif
 #include <stdlib.h>
 #include <netdb.h>
 #include <errno.h>
@@ -183,20 +185,20 @@ static int rr_to_cache(dns_cent_array *centa, time_t ttl, unsigned char *oname, 
  * by the size of the rrs.
  */
 static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz,
-		    unsigned flags, time_t queryts, char tc)
+		    unsigned flags, time_t queryts)
 {
 	int rc;
 	int i;
+	uint16_t type,class; uint32_t ttl; uint16_t rdlength;
 
 	for (i=0;i<recnum;i++) {
 		unsigned char oname[256];
 		int len;
-		uint16_t type,class; uint32_t ttl; uint16_t rdlength;
 		if ((rc=decompress_name(msg, msgsz, ptr, lcnt, oname, &len))!=RC_OK) {
-			return rc==RC_TRUNC?(tc?RC_OK:RC_FORMAT):rc;
+			return rc;
 		}
 		if (*lcnt<sizeof(rr_hdr_t)) {
-			return tc?RC_OK:RC_FORMAT;
+			return RC_TRUNC;
 		}
 		*lcnt-=sizeof(rr_hdr_t);
 		GETINT16(type,*ptr);
@@ -204,7 +206,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 		GETINT32(ttl,*ptr);
 		GETINT16(rdlength,*ptr);
 		if (*lcnt<rdlength) {
-			return tc?RC_OK:RC_FORMAT;
+			return RC_TRUNC;
 		}
 
 		if (!(type<T_MIN || type>T_MAX || class!=C_IN)) {
@@ -233,7 +235,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, db, &len))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				if (blcnt!=0)
-					return RC_FORMAT;
+					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, len, db, type,flags,queryts))
 					return RC_SERVFAIL;
 			}
@@ -257,7 +259,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				/*nptr+=len;*/
 				slen+=len;
 				if (blcnt!=0)
-					return RC_FORMAT;
+					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
 					return RC_SERVFAIL;
 			}
@@ -272,7 +274,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				unsigned char db[2+256];
 				blcnt=rdlength;
 				if (blcnt<2)
-					return RC_FORMAT;
+					goto record_too_short;
 				memcpy(db,*ptr,2); /* copy the preference field*/
 				blcnt-=2;
 				bptr=*ptr+2;
@@ -283,7 +285,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				/*nptr+=len;*/
 				slen+=len;
 				if (blcnt!=0)
-					return RC_FORMAT;
+					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
 					return RC_SERVFAIL;
 			}
@@ -305,12 +307,12 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				slen+=len;
 				/* PDNSD_ASSERT(slen + 20 <= sizeof(db), "T_SOA: buffer limit reached"); */
 				if (blcnt<20)
-					return RC_FORMAT;
+					goto record_too_short;
 				memcpy(nptr,bptr,20); /*copy the rest of the SOA record*/
 				blcnt-=20;
 				slen+=20;
 				if (blcnt!=0)
-					return RC_FORMAT;
+					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
 					return RC_SERVFAIL;
 			}
@@ -321,7 +323,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				unsigned char db[2+256+256];
 				blcnt=rdlength;
 				if (blcnt<2)
-					return RC_FORMAT;
+					goto record_too_short;
 				memcpy(db,*ptr,2); /* copy the preference field*/
 				blcnt-=2;
 				bptr=*ptr+2;
@@ -337,7 +339,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				/* nptr+=len; */
 				slen+=len;
 				if (blcnt!=0)
-					return RC_FORMAT;
+					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
 					return RC_SERVFAIL;
 			}
@@ -347,7 +349,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				unsigned char db[6+256];
 				blcnt=rdlength;
 				if (blcnt<6)
-					return RC_FORMAT;
+					goto record_too_short;
 				memcpy(db,*ptr,6);
 				blcnt-=6;
 				bptr=*ptr+6;
@@ -358,7 +360,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				/*nptr+=len;*/
 				slen+=len;
 				if (blcnt!=0)
-					return RC_FORMAT;
+					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
 					return RC_SERVFAIL;
 			}
@@ -374,7 +376,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				nptr+=len;
 				slen=len+blcnt;
 				if (slen > sizeof(db))
-					return RC_FORMAT;
+					goto buffer_overflow;
 				memcpy(nptr,bptr,blcnt);
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
 					return RC_SERVFAIL;
@@ -398,11 +400,11 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				len=4;   /* also copy the preference field*/
 				for (j=0;j<3;j++) {
 					if (len>=blcnt)
-						return RC_FORMAT;
+						goto record_too_short;
 					len += ((int)bptr[len])+1;
 				}
 				if(len>blcnt)
-					return RC_FORMAT;
+					goto record_too_short;
 				memcpy(nptr,bptr,len);
 				blcnt-=len;
 				bptr+=len;
@@ -415,7 +417,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				/*nptr+=len;*/
 				slen+=len;
 				if (blcnt!=0)
-					return RC_FORMAT;
+					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
 					return RC_SERVFAIL;
 			}
@@ -424,10 +426,10 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 			default:
 				/* Validate types we use internally */
 				if (type==T_A && rdlength!=4)
-					return RC_FORMAT;
+					goto invalid_length;
 #ifdef DNS_NEW_RRS
 				if (type==T_AAAA && rdlength!=16)
-					return RC_FORMAT;
+					goto invalid_length;
 #endif
 				if (!rr_to_cache(centa, ttl, oname, rdlength, *ptr, type,flags,queryts))
 					return RC_SERVFAIL;
@@ -437,6 +439,22 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 		*ptr+=rdlength;
 	}
 	return RC_OK;
+
+ trailing_junk:
+	DEBUG_MSG("rrs2cent: %s record has trailing junk.\n",get_tname(type));
+	return RC_FORMAT;
+
+ record_too_short:
+	DEBUG_MSG("rrs2cent: %s record too short.\n",get_tname(type));
+	return RC_FORMAT;
+
+ buffer_overflow:
+	DEBUG_MSG("rrs2cent: buffer too small to process %s record.\n",get_tname(type));
+	return RC_FORMAT;
+
+ invalid_length:
+	DEBUG_MSG("rrs2cent: %s record has length %u.\n",get_tname(type),rdlength);
+	return RC_FORMAT;
 }
 
 /*
@@ -863,6 +881,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 			return rv;
 		}
 		/* rv==RC_OK */
+		DEBUG_DUMP_DNS_MSG(PDNSD_A(st), st->recvbuf, st->recvl);
 
 		/* Basic sanity checks */
 		if (st->recvl>=sizeof(dns_hdr_t) && ntohs(st->recvbuf->id)==st->myrid &&
@@ -927,7 +946,8 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 
 		lcnt-=sizeof(dns_hdr_t);
 		if (ntohs(st->recvbuf->qdcount)!=1) {
-			DEBUG_MSG("Bad number of query records in answer.\n");
+			DEBUG_PDNSDA_MSG("Bad number of query records in answer from %s\n",
+					 PDNSDA2STR(PDNSD_A(st)));
 			rv=RC_SERVFAIL;
 			goto free_recvbuf_return;
 		}
@@ -935,7 +955,9 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 		{
 			unsigned char nbuf[256];
 			if ((rv=decompress_name((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, nbuf, NULL))!=RC_OK) {
-				if(rv==RC_TRUNC) rv=RC_FORMAT;
+				DEBUG_PDNSDA_MSG("Cannot decompress QNAME in answer from %s\n",
+						 PDNSDA2STR(PDNSD_A(st)));
+				rv=RC_SERVFAIL;
 				goto free_recvbuf_return;
 			}
 			if(!rhnicmp(nbuf,name)) {
@@ -971,30 +993,32 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 		/* Now read the answer, authority and additional sections,
 		   storing the results in the arrays ans_sec,auth_sec and add_sec.
 		*/
-		if ((rv=rrs2cent(&ans_sec,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,
-				 st->flags, queryts, st->recvbuf->tc))!=RC_OK)
-		{
-			goto format_error;
-		}
+		rv=rrs2cent(&ans_sec,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,
+			    st->flags, queryts);
 
-		{
+		if(rv==RC_OK) {
 			uint16_t nscount=ntohs(st->recvbuf->nscount);
-			if (nscount)
-				if((rv=rrs2cent(&auth_sec,&rrp,&lcnt,nscount, (unsigned char *)st->recvbuf,st->recvl,
-						st->flags|CF_ADDITIONAL, queryts, st->recvbuf->tc))!=RC_OK)
-				{
-					goto format_error;
-				}
+			if (nscount) {
+				rv=rrs2cent(&auth_sec,&rrp,&lcnt,nscount, (unsigned char *)st->recvbuf,st->recvl,
+					    st->flags|CF_ADDITIONAL, queryts);
+			}
 		}
 
-		{
+		if(rv==RC_OK) {
 			uint16_t arcount=ntohs(st->recvbuf->arcount);
-			if (arcount)
-				if((rv=rrs2cent(&add_sec,&rrp,&lcnt,arcount, (unsigned char *)st->recvbuf,st->recvl,
-						st->flags|CF_ADDITIONAL, queryts, st->recvbuf->tc))!=RC_OK)
-				{
-					goto format_error;
-				}
+			if (arcount) {
+				rv=rrs2cent(&add_sec,&rrp,&lcnt,arcount, (unsigned char *)st->recvbuf,st->recvl,
+					    st->flags|CF_ADDITIONAL, queryts);
+			}
+		}
+
+		if(!(rv==RC_OK || (rv==RC_TRUNC && st->recvbuf->tc))) {
+			DEBUG_PDNSDA_MSG(rv==RC_FORMAT?"Format error in reply from %s.\n":
+					 rv==RC_TRUNC?"Format error in reply from %s (message unexpectedly truncated).\n":
+					 "Out of memory while processing reply from %s.\n",
+					 PDNSDA2STR(PDNSD_A(st)));
+			rv=RC_SERVFAIL;
+			goto free_ent_centarrays_recvbuf_return;
 		}
 
 		{
@@ -1268,13 +1292,6 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 			}
 		}
 		goto free_centarrays_recvbuf_return;
-
-	format_error:
-		DEBUG_PDNSDA_MSG(rv==RC_FORMAT?"Format error in reply from %s.\n":
-				 "Out of memory while processing reply from %s.\n",
-				 PDNSDA2STR(PDNSD_A(st)));
-		rv=RC_SERVFAIL;
-		goto free_ent_centarrays_recvbuf_return;
 
 	free_ns_ent_centarrays_recvbuf_return:
 		dlist_free(*ns); *ns=NULL;
