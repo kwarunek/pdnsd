@@ -1,0 +1,11 @@
+$Id: TODO,v 1.28 2001/12/30 18:54:48 tmm Exp $
+
+- Implement a reference counter to ensure that newly entered records are not
+  purged immediately (really needed?)
+- Perhaps do a two-step form of recursive query: first query those servers we
+  have got cached, then (if unsuccessful) look the others up and query again.
+  The impact of this optimization may not be very big, because all sane servers
+  give A records for NS records if possible.
+- Test for compatibility on other Unix-like Systems other than the BSDs and
+  Linux; rewrite the functions in netdev.c and icmp.c for those OSs if
+  necessary. Also try to get compatibility for other compilers than gcc
